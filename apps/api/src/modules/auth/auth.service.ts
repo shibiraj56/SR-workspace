@@ -34,7 +34,7 @@ export class AuthService {
     db: AppDatabase,
     input: LoginInput,
     metadata: RequestMetadata,
-    jwtSecret: string = AUTH_CONSTANTS.DEFAULT_DEV_JWT_SECRET
+    jwtSecret: string
   ) {
     if (!input.email || !input.password) {
       throw { code: 'AUTH_INVALID_CREDENTIALS', message: 'Email and password are required.', status: 400 };
@@ -156,7 +156,7 @@ export class AuthService {
     db: AppDatabase,
     input: RegisterInput,
     metadata: RequestMetadata,
-    jwtSecret: string = AUTH_CONSTANTS.DEFAULT_DEV_JWT_SECRET
+    jwtSecret: string
   ) {
     // Check if any users exist in the database
     const existingAnyUser = await db.query.users.findFirst();
@@ -299,7 +299,7 @@ export class AuthService {
     db: AppDatabase,
     rawRefreshToken: string,
     metadata: RequestMetadata,
-    jwtSecret: string = AUTH_CONSTANTS.DEFAULT_DEV_JWT_SECRET
+    jwtSecret: string
   ) {
     if (!rawRefreshToken) {
       throw { code: 'AUTH_UNAUTHORIZED', message: 'No refresh token provided.', status: 401 };

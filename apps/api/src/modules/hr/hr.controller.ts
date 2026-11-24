@@ -52,7 +52,17 @@ hrController.use('*', authMiddleware(), tenantMiddleware());
 hrController.get('/employees/:employeeId/lifecycle', requirePermission('hr:read'), async (c) => {
   const db = getDb(c);
   const { tenantId } = getTenantScope(c);
+  const user = c.get('user')!;
   const employeeId = c.req.param('employeeId');
+
+  // Verify caller identity: non-HR users can only read their own lifecycle
+  const isHR = user.roles?.some((r: string) => ['SUPER_ADMIN', 'TENANT_ADMIN', 'ORG_ADMIN', 'HR_MANAGER'].includes(r));
+  if (!isHR) {
+    const callerEmp = await HrService.getEmployeeForUser(db, tenantId, user.id);
+    if (!callerEmp || callerEmp.id !== employeeId) {
+      return apiError(c, 'FORBIDDEN', 'Access to employee lifecycle records is restricted to HR and self.', 403);
+    }
+  }
 
   try {
     const data = await HrService.getLifecycle(db, tenantId, employeeId);
@@ -165,7 +175,16 @@ hrController.patch('/resignations/:id', requirePermission('hr:manage'), async (c
 hrController.get('/employees/:employeeId/exit-checklist', requirePermission('hr:read'), async (c) => {
   const db = getDb(c);
   const { tenantId } = getTenantScope(c);
+  const user = c.get('user')!;
   const employeeId = c.req.param('employeeId');
+
+  const isHR = user.roles?.some((r: string) => ['SUPER_ADMIN', 'TENANT_ADMIN', 'ORG_ADMIN', 'HR_MANAGER'].includes(r));
+  if (!isHR) {
+    const callerEmp = await HrService.getEmployeeForUser(db, tenantId, user.id);
+    if (!callerEmp || callerEmp.id !== employeeId) {
+      return apiError(c, 'FORBIDDEN', 'Access to exit checklist is restricted to HR and self.', 403);
+    }
+  }
 
   try {
     const checklists = await HrService.getExitChecklist(db, tenantId, employeeId);
@@ -183,7 +202,16 @@ hrController.get('/employees/:employeeId/exit-checklist', requirePermission('hr:
 hrController.get('/employees/:employeeId/documents', requirePermission('hr:read'), async (c) => {
   const db = getDb(c);
   const { tenantId } = getTenantScope(c);
+  const user = c.get('user')!;
   const employeeId = c.req.param('employeeId');
+
+  const isHR = user.roles?.some((r: string) => ['SUPER_ADMIN', 'TENANT_ADMIN', 'ORG_ADMIN', 'HR_MANAGER'].includes(r));
+  if (!isHR) {
+    const callerEmp = await HrService.getEmployeeForUser(db, tenantId, user.id);
+    if (!callerEmp || callerEmp.id !== employeeId) {
+      return apiError(c, 'FORBIDDEN', 'Access to employee documents is restricted to HR and self.', 403);
+    }
+  }
 
   try {
     const docs = await HrService.getDocuments(db, tenantId, employeeId);
@@ -420,9 +448,10 @@ hrController.patch('/attendance/regularizations/:id', requirePermission('attenda
   const user = c.get('user')!;
   const id = c.req.param('id');
   const actingEmp = await HrService.getEmployeeForUser(db, tenantId, user.id);
+  const isSuperAdmin = user.roles?.includes('SUPER_ADMIN');
 
   try {
-    const updated = await HrService.updateRegularization(db, tenantId, id, parseResult.data, user.id, actingEmp?.id);
+    const updated = await HrService.updateRegularization(db, tenantId, id, parseResult.data, user.id, actingEmp?.id, isSuperAdmin);
     return apiSuccess(c, updated, 200);
   } catch (err: any) {
     if (err.code && err.status) return apiError(c, err.code, err.message, err.status);
@@ -526,8 +555,17 @@ hrController.post('/leave/allocations', requirePermission('leave:manage'), async
 hrController.get('/leave/balances/:employeeId', requirePermission('leave:read'), async (c) => {
   const db = getDb(c);
   const { tenantId } = getTenantScope(c);
+  const user = c.get('user')!;
   const employeeId = c.req.param('employeeId');
   const year = c.req.query('year') ? parseInt(c.req.query('year')!, 10) : undefined;
+
+  const isHR = user.roles?.some((r: string) => ['SUPER_ADMIN', 'TENANT_ADMIN', 'ORG_ADMIN', 'HR_MANAGER', 'BRANCH_MANAGER'].includes(r));
+  if (!isHR) {
+    const callerEmp = await HrService.getEmployeeForUser(db, tenantId, user.id);
+    if (!callerEmp || callerEmp.id !== employeeId) {
+      return apiError(c, 'FORBIDDEN', 'Access to employee leave balance is restricted to managers and self.', 403);
+    }
+  }
 
   try {
     const balances = await HrService.getLeaveBalances(db, tenantId, employeeId, year);
@@ -617,9 +655,10 @@ hrController.post('/leave/requests/:id/approve', requirePermission('leave:approv
   const user = c.get('user')!;
   const id = c.req.param('id');
   const actingEmp = await HrService.getEmployeeForUser(db, tenantId, user.id);
+  const isSuperAdmin = user.roles?.includes('SUPER_ADMIN');
 
   try {
-    const approved = await HrService.approveLeaveRequest(db, tenantId, id, actingEmp ? actingEmp.id : user.id, reviewNotes || undefined);
+    const approved = await HrService.approveLeaveRequest(db, tenantId, id, actingEmp ? actingEmp.id : user.id, reviewNotes || undefined, user.id, isSuperAdmin);
     return apiSuccess(c, approved, 200);
   } catch (err: any) {
     if (err.code && err.status) return apiError(c, err.code, err.message, err.status);
@@ -639,7 +678,7 @@ hrController.post('/leave/requests/:id/reject', requirePermission('leave:approve
   const actingEmp = await HrService.getEmployeeForUser(db, tenantId, user.id);
 
   try {
-    const rejected = await HrService.rejectLeaveRequest(db, tenantId, id, actingEmp ? actingEmp.id : user.id, reviewNotes || undefined);
+    const rejected = await HrService.rejectLeaveRequest(db, tenantId, id, actingEmp ? actingEmp.id : user.id, reviewNotes || undefined, user.id);
     return apiSuccess(c, rejected, 200);
   } catch (err: any) {
     if (err.code && err.status) return apiError(c, err.code, err.message, err.status);
@@ -655,7 +694,7 @@ hrController.post('/leave/requests/:id/cancel', requirePermission('leave:read'),
   const actingEmp = await HrService.getEmployeeForUser(db, tenantId, user.id);
 
   try {
-    const cancelled = await HrService.cancelLeaveRequest(db, tenantId, id, actingEmp?.id);
+    const cancelled = await HrService.cancelLeaveRequest(db, tenantId, id, actingEmp?.id, user.id);
     return apiSuccess(c, cancelled, 200);
   } catch (err: any) {
     if (err.code && err.status) return apiError(c, err.code, err.message, err.status);
@@ -724,7 +763,16 @@ hrController.patch('/shifts/:id', requirePermission('shifts:manage'), async (c) 
 hrController.get('/employees/:employeeId/shifts', requirePermission('shifts:read'), async (c) => {
   const db = getDb(c);
   const { tenantId } = getTenantScope(c);
+  const user = c.get('user')!;
   const employeeId = c.req.param('employeeId');
+
+  const isHR = user.roles?.some((r: string) => ['SUPER_ADMIN', 'TENANT_ADMIN', 'ORG_ADMIN', 'HR_MANAGER', 'BRANCH_MANAGER'].includes(r));
+  if (!isHR) {
+    const callerEmp = await HrService.getEmployeeForUser(db, tenantId, user.id);
+    if (!callerEmp || callerEmp.id !== employeeId) {
+      return apiError(c, 'FORBIDDEN', 'Access to employee shift schedules is restricted to managers and self.', 403);
+    }
+  }
 
   try {
     const assignments = await HrService.getEmployeeShifts(db, tenantId, employeeId);

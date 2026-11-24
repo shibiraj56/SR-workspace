@@ -779,7 +779,8 @@ export class HrService {
     id: string,
     input: any,
     userId: string,
-    reviewerEmployeeId?: string
+    reviewerEmployeeId?: string,
+    isSuperAdmin?: boolean
   ) {
     const reg = await db.query.attendanceRegularizations.findFirst({
       where: and(eq(attendanceRegularizations.tenantId, tenantId), eq(attendanceRegularizations.id, id)),
@@ -790,6 +791,14 @@ export class HrService {
         code: 'REGULARIZATION_NOT_FOUND',
         message: 'Regularization request not found.',
         status: 404,
+      };
+    }
+
+    if (reviewerEmployeeId && reg.employeeId === reviewerEmployeeId && input.status === 'APPROVED') {
+      throw {
+        code: 'SELF_APPROVAL_FORBIDDEN',
+        message: 'Employees cannot approve their own attendance regularization requests.',
+        status: 403,
       };
     }
 
@@ -1229,7 +1238,9 @@ export class HrService {
     tenantId: string,
     id: string,
     reviewerEmployeeId: string,
-    reviewNotes?: string
+    reviewNotes?: string,
+    userId?: string,
+    isSuperAdmin?: boolean
   ) {
     const req = await db.query.leaveRequests.findFirst({
       where: and(eq(leaveRequests.tenantId, tenantId), eq(leaveRequests.id, id)),
@@ -1240,6 +1251,14 @@ export class HrService {
         code: 'LEAVE_REQUEST_NOT_FOUND',
         message: 'Leave request not found.',
         status: 404,
+      };
+    }
+
+    if (reviewerEmployeeId && req.employeeId === reviewerEmployeeId) {
+      throw {
+        code: 'SELF_APPROVAL_FORBIDDEN',
+        message: 'Employees cannot approve their own leave applications.',
+        status: 403,
       };
     }
 
@@ -1283,6 +1302,15 @@ export class HrService {
       })
       .where(eq(leaveRequests.id, id));
 
+    await db.insert(auditLogs).values({
+      tenantId,
+      userId: userId || null,
+      action: 'UPDATE',
+      entityType: 'leave_request',
+      entityId: id,
+      changes: JSON.stringify({ status: 'APPROVED', reviewerEmployeeId, reviewNotes }),
+    });
+
     return { ...req, status: 'APPROVED', reviewedByEmployeeId: reviewerEmployeeId, reviewedAt: now };
   }
 
@@ -1291,7 +1319,8 @@ export class HrService {
     tenantId: string,
     id: string,
     reviewerEmployeeId: string,
-    reviewNotes?: string
+    reviewNotes?: string,
+    userId?: string
   ) {
     const req = await db.query.leaveRequests.findFirst({
       where: and(eq(leaveRequests.tenantId, tenantId), eq(leaveRequests.id, id)),
@@ -1302,6 +1331,14 @@ export class HrService {
         code: 'LEAVE_REQUEST_NOT_FOUND',
         message: 'Leave request not found.',
         status: 404,
+      };
+    }
+
+    if (reviewerEmployeeId && req.employeeId === reviewerEmployeeId) {
+      throw {
+        code: 'SELF_APPROVAL_FORBIDDEN',
+        message: 'Employees cannot approve their own leave applications.',
+        status: 403,
       };
     }
 
@@ -1344,10 +1381,19 @@ export class HrService {
       })
       .where(eq(leaveRequests.id, id));
 
+    await db.insert(auditLogs).values({
+      tenantId,
+      userId: userId || null,
+      action: 'UPDATE',
+      entityType: 'leave_request',
+      entityId: id,
+      changes: JSON.stringify({ status: 'REJECTED', reviewerEmployeeId, reviewNotes }),
+    });
+
     return { ...req, status: 'REJECTED', reviewedByEmployeeId: reviewerEmployeeId, reviewedAt: now };
   }
 
-  static async cancelLeaveRequest(db: AppDatabase, tenantId: string, id: string, actingEmployeeId?: string) {
+  static async cancelLeaveRequest(db: AppDatabase, tenantId: string, id: string, actingEmployeeId?: string, userId?: string) {
     const req = await db.query.leaveRequests.findFirst({
       where: and(eq(leaveRequests.tenantId, tenantId), eq(leaveRequests.id, id)),
     });
@@ -1411,6 +1457,15 @@ export class HrService {
         updatedAt: now,
       })
       .where(eq(leaveRequests.id, id));
+
+    await db.insert(auditLogs).values({
+      tenantId,
+      userId: userId || null,
+      action: 'UPDATE',
+      entityType: 'leave_request',
+      entityId: id,
+      changes: JSON.stringify({ status: 'CANCELLED', actingEmployeeId }),
+    });
 
     return { ...req, status: 'CANCELLED' };
   }
@@ -1539,6 +1594,25 @@ export class HrService {
         message: 'Shift not found in this workspace.',
         status: 404,
       };
+    }
+
+    // Check for overlapping bounded shift assignments
+    if (input.effectiveTo) {
+      const overlapping = await db.query.employeeShifts.findFirst({
+        where: and(
+          eq(employeeShifts.tenantId, tenantId),
+          eq(employeeShifts.employeeId, employeeId),
+          sql`(${employeeShifts.effectiveTo} IS NOT NULL AND ${employeeShifts.effectiveTo} >= ${input.effectiveFrom} AND ${employeeShifts.effectiveFrom} <= ${input.effectiveTo})`
+        ),
+      });
+
+      if (overlapping) {
+        throw {
+          code: 'SHIFT_ASSIGNMENT_OVERLAP',
+          message: 'Employee already has an overlapping shift assignment for this date range.',
+          status: 409,
+        };
+      }
     }
 
     // Close any existing open-ended shift assignments if new shift starts after or on same day
@@ -2039,6 +2113,13 @@ export class HrService {
       updates.selfSubmittedAt = now;
       updates.status = 'PENDING_MANAGER_REVIEW';
     } else if (input.type === 'MANAGER') {
+      if (actingEmployeeId && rev.reviewerEmployeeId && rev.reviewerEmployeeId !== actingEmployeeId) {
+        throw {
+          code: 'FORBIDDEN',
+          message: 'You are not the designated reviewer for this performance evaluation.',
+          status: 403,
+        };
+      }
       if (rev.status !== 'PENDING_MANAGER_REVIEW' && rev.status !== 'PENDING_SELF_REVIEW') {
         throw {
           code: 'INVALID_STATUS',

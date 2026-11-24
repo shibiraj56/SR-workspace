@@ -716,16 +716,16 @@ describe('Milestone 7 Phase D: HR Security & Integration Acceptance Audit', () =
         'X-Tenant-Id': tenantA,
       },
     }, env);
-    expect([200, 403]).toContain(resOtherLifecycle.status);
+    expect(resOtherLifecycle.status).toBe(403);
 
     // 3. AUDIT OBSERVATION: Reports access by ordinary employee
-    // In current implementation, 'hr_reports:read'.endsWith(':read') matches isReadPermission fallback
+    // Excluded from standard read fallback; requires explicit admin/HR role
     const resReports = await app.request('/api/v1/hr/reports/workforce', {
       headers: {
         'Cookie': `sr_access=${emp1.accessCookie}`,
         'X-Tenant-Id': tenantA,
       },
     }, env);
-    expect([200, 403]).toContain(resReports.status);
+    expect(resReports.status).toBe(403);
   });
 });

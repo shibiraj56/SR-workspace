@@ -2,7 +2,7 @@ import type { MiddlewareHandler } from 'hono';
 import { eq } from 'drizzle-orm';
 import { users } from '@sr-workspace/database';
 import { getAccessToken } from '../lib/cookies';
-import { verifyAccessToken } from '../lib/crypto';
+import { verifyAccessToken, getJwtSecret } from '../lib/crypto';
 import { getDb } from '../lib/db';
 import { apiError } from '../lib/response';
 import { AUTH_CONSTANTS } from '../config/constants';
@@ -15,7 +15,12 @@ export function authMiddleware(): MiddlewareHandler<HonoEnv> {
       return apiError(c, 'AUTH_UNAUTHORIZED', 'Authentication required. No session token provided.', 401);
     }
 
-    const secret = c.env.JWT_SECRET || AUTH_CONSTANTS.DEFAULT_DEV_JWT_SECRET;
+    let secret: string;
+    try {
+      secret = getJwtSecret(c.env);
+    } catch {
+      return apiError(c, 'AUTH_CONFIG_ERROR', 'Authentication configuration error: JWT_SECRET is required.', 500);
+    }
     let payload: any;
 
     try {
@@ -70,7 +75,13 @@ export function optionalAuthMiddleware(): MiddlewareHandler<HonoEnv> {
       return;
     }
 
-    const secret = c.env.JWT_SECRET || AUTH_CONSTANTS.DEFAULT_DEV_JWT_SECRET;
+    let secret: string;
+    try {
+      secret = getJwtSecret(c.env);
+    } catch {
+      await next();
+      return;
+    }
     try {
       const payload = await verifyAccessToken(token, secret);
       if (payload?.sub) {

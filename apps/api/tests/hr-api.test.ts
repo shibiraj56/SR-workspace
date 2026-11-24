@@ -145,6 +145,83 @@ describe('Milestone 7 Phase C: HR & Workforce Management API Tests', () => {
     };
   }
 
+  async function setupUserInTenant(tenantId: string, email: string, roleCode: string = 'TENANT_ADMIN') {
+    const db = createDb(env.DB);
+    const userId = crypto.randomUUID();
+    const roleId = crypto.randomUUID();
+    const employeeId = crypto.randomUUID();
+    const passwordHash = await hashPassword('Password123!');
+
+    await db.insert(users).values({
+      id: userId,
+      email: email.toLowerCase(),
+      passwordHash,
+      firstName: 'Reviewer',
+      lastName: 'User',
+      status: 'ACTIVE',
+      emailVerified: true,
+    });
+
+    await db.insert(userTenants).values({
+      id: crypto.randomUUID(),
+      userId,
+      tenantId,
+      isDefault: true,
+      status: 'ACTIVE',
+    });
+
+    await db.insert(roles).values({
+      id: roleId,
+      tenantId,
+      name: roleCode,
+      code: roleCode,
+      roleType: 'SYSTEM',
+    });
+
+    await db.insert(userRoles).values({
+      id: crypto.randomUUID(),
+      userId,
+      roleId,
+      tenantId,
+    });
+
+    await db.insert(employees).values({
+      id: employeeId,
+      tenantId,
+      userId,
+      employeeCode: `EMP-${email.split('@')[0].toUpperCase().slice(0, 8)}`,
+      firstName: 'Reviewer',
+      lastName: 'Specialist',
+      workEmail: email,
+      employmentType: 'FULL_TIME',
+      employmentStatus: 'ACTIVE',
+      joiningDate: new Date('2025-01-01'),
+    });
+
+    const loginRes = await app.request(
+      '/api/v1/auth/login',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-skip-rate-limit': 'true',
+        },
+        body: JSON.stringify({ email, password: 'Password123!' }),
+      },
+      env
+    );
+
+    const accessCookie = extractCookie(loginRes, 'sr_access');
+    if (!accessCookie) throw new Error('Login failed to return sr_access cookie');
+
+    return {
+      userId,
+      tenantId,
+      employeeId,
+      accessCookie,
+    };
+  }
+
   // ==========================================
   // 1. SHIFT MANAGEMENT TESTS
   // ==========================================
@@ -454,14 +531,15 @@ describe('Milestone 7 Phase C: HR & Workforce Management API Tests', () => {
     const regData = await regRes.json() as any;
     const regId = regData.data.id;
 
-    // Approve regularization
+    // Approve regularization (by another administrator/manager in tenant to prevent self-approval)
+    const approver = await setupUserInTenant(admin.tenantId, 'approver-attend@test.com');
     const approveRegRes = await app.request(
       `/api/v1/hr/attendance/regularizations/${regId}`,
       {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Cookie: `sr_access=${admin.accessCookie}`,
+          Cookie: `sr_access=${approver.accessCookie}`,
           'X-Tenant-Id': admin.tenantId,
         },
         body: JSON.stringify({
@@ -616,14 +694,15 @@ describe('Milestone 7 Phase C: HR & Workforce Management API Tests', () => {
     );
     expect(overlapRes.status).toBe(409);
 
-    // Approve leave request
+    // Approve leave request (by another administrator/manager in tenant to prevent self-approval)
+    const approver = await setupUserInTenant(admin.tenantId, 'approver-leave@test.com');
     const approveRes = await app.request(
       `/api/v1/hr/leave/requests/${reqId}/approve`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Cookie: `sr_access=${admin.accessCookie}`,
+          Cookie: `sr_access=${approver.accessCookie}`,
           'X-Tenant-Id': admin.tenantId,
         },
         body: JSON.stringify({

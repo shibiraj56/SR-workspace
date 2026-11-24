@@ -21,5 +21,26 @@
     "APP_ORIGIN": "https://workspace.srcodelab.space",
     "JWT_ACCESS_EXPIRATION_SECONDS": "900",
     "REFRESH_TOKEN_EXPIRATION_DAYS": "7"
+  },
+  "env": {
+    "staging": {
+      "name": "sr-workspace-api-staging",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "sr-workspace-staging-d1",
+          "database_id": "39e342d3-7ede-4af4-8d64-6f6787783e63",
+          "migrations_dir": "../../packages/database/src/migrations"
+        }
+      ],
+      "vars": {
+        "APP_ENV": "staging",
+        "APP_NAME": "SR WORKSPACE API (Staging)",
+        "API_PREFIX": "/api/v1",
+        "APP_ORIGIN": "https://staging-workspace.srcodelab.space",
+        "JWT_ACCESS_EXPIRATION_SECONDS": "900",
+        "REFRESH_TOKEN_EXPIRATION_DAYS": "7"
+      }
+    }
   }
 }

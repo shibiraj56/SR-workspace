@@ -41,7 +41,7 @@ export function csrfProtection(): MiddlewareHandler<HonoEnv> {
 
         if (originBase === allowedBase) {
           isAllowed = true;
-        } else if (c.env.APP_ENV !== 'production') {
+        } else if (c.env.APP_ENV === 'development' || c.env.APP_ENV === 'test') {
           // In development and test, allow localhost and loopback IP
           if (originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1') {
             isAllowed = true;

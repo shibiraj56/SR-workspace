@@ -40,8 +40,13 @@ export function requirePermission(
       userPermissions.includes(required)
     );
 
-    // If role is EMPLOYEE or VIEWER and checking read permission, grant read access
-    const isReadPermission = permissionsList.every((p) => p.endsWith(':read'));
+    // Permissions that are strictly administrative and excluded from standard employee read fallback
+    const isAdministrativeRead = permissionsList.some((p) =>
+      p === 'hr_reports:read' || p.startsWith('admin:')
+    );
+
+    // If role is EMPLOYEE or VIEWER and checking non-administrative read permission, grant read access
+    const isReadPermission = permissionsList.every((p) => p.endsWith(':read')) && !isAdministrativeRead;
     const isStandardRole = user.roles?.some((r) => ['EMPLOYEE', 'VIEWER', 'BRANCH_MANAGER', 'ORG_ADMIN'].includes(r));
 
     if (hasPermission || (isReadPermission && isStandardRole)) {

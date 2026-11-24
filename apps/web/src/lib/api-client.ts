@@ -17,6 +17,35 @@ export class ApiClientError extends Error {
 // In-flight refresh promise singleton to prevent multiple simultaneous refresh calls
 let activeRefreshPromise: Promise<boolean> | null = null;
 
+/**
+ * Returns the configured base API URL from environment variables, stripped of trailing slashes.
+ * In local development with Vite proxy, VITE_API_BASE_URL is unset, returning an empty string.
+ */
+export function getApiBaseUrl(): string {
+  const base = import.meta.env?.VITE_API_BASE_URL;
+  if (!base || typeof base !== 'string') {
+    return '';
+  }
+  return base.replace(/\/+$/, '');
+}
+
+/**
+ * Resolves an API endpoint against the configured base URL without double-prefixing.
+ * Preserves absolute URLs (starting with http:// or https://).
+ * Preserves relative paths when VITE_API_BASE_URL is unset.
+ */
+export function resolveApiUrl(endpoint: string): string {
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    return endpoint;
+  }
+  const base = getApiBaseUrl();
+  if (!base) {
+    return endpoint;
+  }
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return `${base}${cleanEndpoint}`;
+}
+
 interface RequestOptions extends RequestInit {
   skipAuthRefresh?: boolean;
 }
@@ -24,7 +53,7 @@ interface RequestOptions extends RequestInit {
 export async function apiClient<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const { skipAuthRefresh = false, headers = {}, ...customConfig } = options;
 
-  const url = endpoint.startsWith('http') ? endpoint : endpoint;
+  const url = resolveApiUrl(endpoint);
 
   const defaultHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -102,7 +131,7 @@ async function refreshSessionInternal(): Promise<boolean> {
 
   activeRefreshPromise = (async () => {
     try {
-      const res = await fetch('/api/v1/auth/refresh', {
+      const res = await fetch(resolveApiUrl('/api/v1/auth/refresh'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

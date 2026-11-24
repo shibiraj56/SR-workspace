@@ -11,6 +11,7 @@ import {
   clearAuthCookies,
 } from '../../lib/cookies';
 import { apiSuccess, apiError } from '../../lib/response';
+import { getJwtSecret } from '../../lib/crypto';
 import { AUTH_CONSTANTS } from '../../config/constants';
 import type { HonoEnv } from '../../types/context';
 
@@ -34,7 +35,6 @@ authController.post('/login', loginRateLimiter(), async (c) => {
 
   const input = validation.data;
   const db = getDb(c);
-  const jwtSecret = c.env.JWT_SECRET || AUTH_CONSTANTS.DEFAULT_DEV_JWT_SECRET;
 
   const metadata = {
     userAgent: c.req.header('user-agent'),
@@ -42,6 +42,7 @@ authController.post('/login', loginRateLimiter(), async (c) => {
   };
 
   try {
+    const jwtSecret = getJwtSecret(c.env);
     const result = await AuthService.login(db, input, metadata, jwtSecret);
 
     // Set secure HttpOnly cookies
@@ -84,7 +85,6 @@ authController.post('/register', async (c) => {
 
   const input = validation.data;
   const db = getDb(c);
-  const jwtSecret = c.env.JWT_SECRET || AUTH_CONSTANTS.DEFAULT_DEV_JWT_SECRET;
 
   const metadata = {
     userAgent: c.req.header('user-agent'),
@@ -92,6 +92,7 @@ authController.post('/register', async (c) => {
   };
 
   try {
+    const jwtSecret = getJwtSecret(c.env);
     const result = await AuthService.register(db, input, metadata, jwtSecret);
 
     setAccessCookie(c, result.accessToken);
@@ -125,7 +126,6 @@ authController.post('/refresh', async (c) => {
   }
 
   const db = getDb(c);
-  const jwtSecret = c.env.JWT_SECRET || AUTH_CONSTANTS.DEFAULT_DEV_JWT_SECRET;
 
   const metadata = {
     userAgent: c.req.header('user-agent'),
@@ -133,6 +133,7 @@ authController.post('/refresh', async (c) => {
   };
 
   try {
+    const jwtSecret = getJwtSecret(c.env);
     const result = await AuthService.refresh(db, rawRefreshToken, metadata, jwtSecret);
 
     setAccessCookie(c, result.accessToken);

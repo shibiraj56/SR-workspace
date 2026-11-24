@@ -5,7 +5,7 @@ import type { HonoEnv } from '../types/context';
 
 export function isSecureEnvironment(c: Context<HonoEnv>): boolean {
   const env = c.env.APP_ENV || 'development';
-  if (env === 'production') return true;
+  if (env === 'production' || env === 'staging') return true;
   const proto = c.req.header('x-forwarded-proto') || '';
   const url = c.req.url;
   return proto === 'https' || url.startsWith('https:');

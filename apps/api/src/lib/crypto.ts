@@ -72,3 +72,26 @@ export async function signAccessToken(
 export async function verifyAccessToken(token: string, secret: string): Promise<any> {
   return verify(token, secret, 'HS256');
 }
+
+/**
+ * Resolves the JWT secret according to strict environment requirements.
+ * - In development (APP_ENV === 'development'), falls back to DEFAULT_DEV_JWT_SECRET if not provided.
+ * - In staging, production, and all non-development environments, JWT_SECRET is strictly required.
+ * - Fails closed without exposing secret values if missing.
+ */
+export function getJwtSecret(env?: { JWT_SECRET?: string; APP_ENV?: string }): string {
+  const secret = env?.JWT_SECRET?.trim();
+  if (secret && secret.length > 0) {
+    return secret;
+  }
+
+  if (env?.APP_ENV === 'development') {
+    return AUTH_CONSTANTS.DEFAULT_DEV_JWT_SECRET;
+  }
+
+  throw {
+    code: 'AUTH_CONFIG_ERROR',
+    message: 'Authentication configuration error: JWT_SECRET is required in this environment.',
+    status: 500,
+  };
+}

@@ -36,7 +36,8 @@ export function createApp() {
             return origin;
           }
 
-          if (c.env.APP_ENV !== 'production') {
+          // In development and test environments, allow localhost and loopback IP
+          if (c.env.APP_ENV === 'development' || c.env.APP_ENV === 'test') {
             if (originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1') {
               return origin;
             }
@@ -44,7 +45,8 @@ export function createApp() {
         } catch {
           // Invalid origin format
         }
-        return allowedOrigin;
+        // Reject all untrusted origins (returns null so no Access-Control-Allow-Origin is sent)
+        return null;
       },
       credentials: true,
       allowHeaders: [
