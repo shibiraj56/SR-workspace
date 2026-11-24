@@ -9,4 +9,5 @@ export interface Bindings {
   JWT_SECRET?: string;
   JWT_ACCESS_EXPIRATION_SECONDS?: string;
   REFRESH_TOKEN_EXPIRATION_DAYS?: string;
+  STAGING_PROXY_SECRET?: string;
 }

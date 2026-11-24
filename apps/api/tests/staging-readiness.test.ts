@@ -30,6 +30,7 @@ describe('Staging Deployment Readiness & Security Hardening Tests', () => {
   const STAGING_ORIGIN = 'https://staging-workspace.srcodelab.space';
   const PRODUCTION_ORIGIN = 'https://workspace.srcodelab.space';
   const VALID_STAGING_JWT_SECRET = 'staging-cryptographic-jwt-secret-minimum-32-characters!';
+  const VALID_STAGING_PROXY_SECRET = 'staging-cryptographic-proxy-secret-32-characters!';
 
   function extractCookie(res: Response, cookieName: string): string | undefined {
     const getSetCookie = (res.headers as any).getSetCookie?.();
@@ -152,12 +153,17 @@ describe('Staging Deployment Readiness & Security Hardening Tests', () => {
         APP_ENV: 'staging',
         APP_NAME: 'SR WORKSPACE API (Staging)',
         APP_ORIGIN: STAGING_ORIGIN,
+        STAGING_PROXY_SECRET: VALID_STAGING_PROXY_SECRET,
         // JWT_SECRET is intentionally omitted
       };
 
       const res = await app.request('/api/v1/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-skip-rate-limit': 'true' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-skip-rate-limit': 'true',
+          'x-staging-proxy-secret': VALID_STAGING_PROXY_SECRET,
+        },
         body: JSON.stringify({ email: 'user@staging.com', password: 'Password123!' }),
       }, stagingEnvWithoutSecret);
 
@@ -231,11 +237,16 @@ describe('Staging Deployment Readiness & Security Hardening Tests', () => {
         APP_NAME: 'SR WORKSPACE API (Staging)',
         APP_ORIGIN: STAGING_ORIGIN,
         JWT_SECRET: VALID_STAGING_JWT_SECRET,
+        STAGING_PROXY_SECRET: VALID_STAGING_PROXY_SECRET,
       };
 
       const res = await app.request('/api/v1/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-skip-rate-limit': 'true' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-skip-rate-limit': 'true',
+          'x-staging-proxy-secret': VALID_STAGING_PROXY_SECRET,
+        },
         body: JSON.stringify({ email: 'user@staging-ok.com', password: 'Password123!' }),
       }, stagingEnv);
 
@@ -255,6 +266,7 @@ describe('Staging Deployment Readiness & Security Hardening Tests', () => {
       APP_NAME: 'SR WORKSPACE API (Staging)',
       APP_ORIGIN: STAGING_ORIGIN,
       JWT_SECRET: VALID_STAGING_JWT_SECRET,
+      STAGING_PROXY_SECRET: VALID_STAGING_PROXY_SECRET,
     });
 
     it('should permit CORS from the exact staging frontend origin', async () => {
@@ -262,6 +274,7 @@ describe('Staging Deployment Readiness & Security Hardening Tests', () => {
         method: 'GET',
         headers: {
           Origin: STAGING_ORIGIN,
+          'x-staging-proxy-secret': VALID_STAGING_PROXY_SECRET,
         },
       }, stagingEnv());
 
@@ -274,6 +287,7 @@ describe('Staging Deployment Readiness & Security Hardening Tests', () => {
         method: 'GET',
         headers: {
           Origin: 'http://localhost:5173',
+          'x-staging-proxy-secret': VALID_STAGING_PROXY_SECRET,
         },
       }, stagingEnv());
 
@@ -286,6 +300,7 @@ describe('Staging Deployment Readiness & Security Hardening Tests', () => {
         method: 'GET',
         headers: {
           Origin: PRODUCTION_ORIGIN,
+          'x-staging-proxy-secret': VALID_STAGING_PROXY_SECRET,
         },
       }, stagingEnv());
 
@@ -300,6 +315,7 @@ describe('Staging Deployment Readiness & Security Hardening Tests', () => {
           'Content-Type': 'application/json',
           Origin: 'http://localhost:5173',
           'x-skip-rate-limit': 'true',
+          'x-staging-proxy-secret': VALID_STAGING_PROXY_SECRET,
         },
         body: JSON.stringify({ email: 'any@staging.com', password: 'Password123!' }),
       }, stagingEnv());
@@ -321,6 +337,7 @@ describe('Staging Deployment Readiness & Security Hardening Tests', () => {
           'Content-Type': 'application/json',
           Origin: STAGING_ORIGIN,
           'x-skip-rate-limit': 'true',
+          'x-staging-proxy-secret': VALID_STAGING_PROXY_SECRET,
         },
         body: JSON.stringify({ email: 'secure@staging.com', password: 'Password123!' }),
       }, stagingEnv());
