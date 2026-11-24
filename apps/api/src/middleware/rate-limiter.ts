@@ -132,3 +132,23 @@ export function loginRateLimiter() {
     enableDistributed: true,
   });
 }
+
+// Limiter for public invitation verification (30 requests per minute)
+export function invitationRateLimiter() {
+  return rateLimiter({
+    windowMs: 60 * 1000,
+    maxRequests: 30,
+    keyPrefix: 'invite-verify',
+    enableDistributed: true,
+  });
+}
+
+// Strict limiter for public invitation acceptance (10 requests per minute)
+export function acceptInvitationRateLimiter() {
+  return rateLimiter({
+    windowMs: 60 * 1000,
+    maxRequests: 10,
+    keyPrefix: 'invite-accept',
+    enableDistributed: true,
+  });
+}

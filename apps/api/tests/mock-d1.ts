@@ -109,11 +109,19 @@ export function createTestD1Database(): D1Database {
     },
 
     async batch<T = unknown>(statements: D1PreparedStatement[]): Promise<D1Response[]> {
-      const results: D1Response[] = [];
-      for (const statement of statements) {
-        results.push(await statement.run<T>());
+      const alreadyInTx = sqlite.inTransaction;
+      if (!alreadyInTx) sqlite.exec('BEGIN');
+      try {
+        const results: D1Response[] = [];
+        for (const statement of statements) {
+          results.push(await statement.run<T>());
+        }
+        if (!alreadyInTx) sqlite.exec('COMMIT');
+        return results;
+      } catch (err) {
+        if (!alreadyInTx) sqlite.exec('ROLLBACK');
+        throw err;
       }
-      return results;
     },
 
     async exec(query: string): Promise<D1ExecResult> {

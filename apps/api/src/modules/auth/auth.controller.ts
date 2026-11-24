@@ -1,8 +1,14 @@
 import { Hono } from 'hono';
 import { AuthService } from './auth.service';
 import { loginSchema, registerSchema } from './auth.schemas';
+import { InvitationsService } from '../invitations/invitations.service';
+import { acceptInvitationSchema } from '../invitations/invitations.schemas';
 import { authMiddleware } from '../../middleware/auth';
-import { loginRateLimiter } from '../../middleware/rate-limiter';
+import {
+  loginRateLimiter,
+  invitationRateLimiter,
+  acceptInvitationRateLimiter,
+} from '../../middleware/rate-limiter';
 import { getDb } from '../../lib/db';
 import {
   setAccessCookie,
@@ -185,6 +191,77 @@ authController.get('/me', authMiddleware(), async (c) => {
   try {
     const profile = await AuthService.getMe(db, currentUser.id);
     return apiSuccess(c, profile, 200);
+  } catch (err: any) {
+    if (err.code && err.status) {
+      return apiError(c, err.code, err.message, err.status);
+    }
+    throw err;
+  }
+});
+
+/**
+ * GET /api/v1/auth/invitations/:token
+ * Public verification of an invitation token.
+ */
+authController.get('/invitations/:token', invitationRateLimiter(), async (c) => {
+  const token = c.req.param('token');
+  const db = getDb(c);
+
+  try {
+    const details = await InvitationsService.verifyInvitation(db, token);
+    return apiSuccess(c, details, 200);
+  } catch (err: any) {
+    if (err.code && err.status) {
+      return apiError(c, err.code, err.message, err.status);
+    }
+    throw err;
+  }
+});
+
+/**
+ * POST /api/v1/auth/accept-invitation
+ * Public acceptance of an invitation. Sets up account, links employee, issues auth cookies.
+ */
+authController.post('/accept-invitation', acceptInvitationRateLimiter(), async (c) => {
+  const rawBody = await c.req.json().catch(() => ({}));
+  const validation = acceptInvitationSchema.safeParse(rawBody);
+
+  if (!validation.success) {
+    const details = validation.error.issues.map((issue) => ({
+      field: issue.path.join('.'),
+      message: issue.message,
+    }));
+    return apiError(c, 'VALIDATION_ERROR', 'Request validation failed.', 400, details);
+  }
+
+  const db = getDb(c);
+  const metadata = {
+    userAgent: c.req.header('user-agent'),
+    ipAddress: c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || '127.0.0.1',
+  };
+
+  try {
+    const jwtSecret = getJwtSecret(c.env);
+    const result = await InvitationsService.acceptInvitation(
+      db,
+      validation.data,
+      metadata,
+      jwtSecret
+    );
+
+    setAccessCookie(c, result.accessToken);
+    setRefreshCookie(c, result.rawRefreshToken);
+
+    return apiSuccess(
+      c,
+      {
+        user: result.user,
+        tenant: result.tenant,
+        roles: result.roles,
+        permissions: result.permissions,
+      },
+      201
+    );
   } catch (err: any) {
     if (err.code && err.status) {
       return apiError(c, err.code, err.message, err.status);

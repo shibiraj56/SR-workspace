@@ -162,11 +162,11 @@ export class AuthService {
     const existingAnyUser = await db.query.users.findFirst();
     const hasUsers = Boolean(existingAnyUser);
 
-    // If users already exist, public registration is forbidden unless an authorized setupKey is provided
-    if (hasUsers && input.setupKey !== 'SR_WORKSPACE_INITIAL_SETUP_KEY') {
+    // If users already exist, public registration is strictly disabled
+    if (hasUsers) {
       throw {
         code: 'REGISTRATION_CLOSED',
-        message: 'Public registration is disabled. Users must be invited by a tenant administrator.',
+        message: 'Public registration is disabled. Users must be invited by an administrator.',
         status: 403,
       };
     }

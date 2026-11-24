@@ -5,6 +5,7 @@ import { users, userTenants, refreshTokens } from './users';
 import { roles, permissions, rolePermissions, userRoles } from './roles';
 import { departments } from './departments';
 import { employees } from './employees';
+import { invitations } from './invitations';
 import { projects, projectMembers } from './projects';
 import { tasks, taskComments, taskActivity } from './tasks';
 import { conversations, conversationMembers, messages, messageReactions, attachments } from './conversations';
@@ -47,6 +48,7 @@ export const tenantsRelations = relations(tenants, ({ one, many }) => ({
   roles: many(roles),
   userRoles: many(userRoles),
   auditLogs: many(auditLogs),
+  invitations: many(invitations),
   shifts: many(shifts),
   holidays: many(holidays),
   attendanceRecords: many(attendanceRecords),
@@ -99,6 +101,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   messageReactions: many(messageReactions),
   receivedNotifications: many(notifications, { relationName: 'recipientUser' }),
   sentNotifications: many(notifications, { relationName: 'actorUser' }),
+  sentInvitations: many(invitations, { relationName: 'invitingUser' }),
   employeeProfile: one(employees, {
     fields: [users.id],
     references: [employees.userId],
@@ -130,6 +133,7 @@ export const rolesRelations = relations(roles, ({ one, many }) => ({
   }),
   rolePermissions: many(rolePermissions),
   userRoles: many(userRoles),
+  invitations: many(invitations),
 }));
 
 export const permissionsRelations = relations(permissions, ({ many }) => ({
@@ -238,6 +242,7 @@ export const employeesRelations = relations(employees, ({ one, many }) => ({
     fields: [employees.updatedBy],
     references: [users.id],
   }),
+  invitations: many(invitations),
   shiftAssignments: many(employeeShifts),
   attendanceRecords: many(attendanceRecords),
   attendanceRegularizations: many(attendanceRegularizations),
@@ -749,5 +754,25 @@ export const hrDocumentMetadataRelations = relations(hrDocumentMetadata, ({ one 
     fields: [hrDocumentMetadata.verifiedByEmployeeId],
     references: [employees.id],
     relationName: 'verifierDocumentMetadata',
+  }),
+}));
+
+export const invitationsRelations = relations(invitations, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [invitations.tenantId],
+    references: [tenants.id],
+  }),
+  employee: one(employees, {
+    fields: [invitations.employeeId],
+    references: [employees.id],
+  }),
+  role: one(roles, {
+    fields: [invitations.roleId],
+    references: [roles.id],
+  }),
+  inviter: one(users, {
+    fields: [invitations.invitedBy],
+    references: [users.id],
+    relationName: 'invitingUser',
   }),
 }));

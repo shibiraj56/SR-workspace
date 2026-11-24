@@ -6,6 +6,8 @@ import {
   updateEmployeeStatusSchema,
   listEmployeesQuerySchema,
 } from './employees.schemas';
+import { InvitationsService } from '../invitations/invitations.service';
+import { inviteEmployeeSchema } from '../invitations/invitations.schemas';
 import { authMiddleware } from '../../middleware/auth';
 import { tenantMiddleware, getTenantScope } from '../../middleware/tenant';
 import { requirePermission } from '../../middleware/rbac';
@@ -210,6 +212,52 @@ employeesController.delete('/:id', requirePermission('employees:delete'), async 
   try {
     const result = await EmployeesService.deleteEmployee(db, tenantId, user.id, id, meta);
     return apiSuccess(c, result, 200);
+  } catch (err: any) {
+    if (err.code && err.status) {
+      return apiError(c, err.code, err.message, err.status);
+    }
+    throw err;
+  }
+});
+
+/**
+ * POST /api/v1/employees/:id/invite
+ * Issue an invitation for an employee to register and link their user account.
+ */
+employeesController.post('/:id/invite', requirePermission(['employees:create', 'users:create']), async (c) => {
+  const id = c.req.param('id');
+  const rawBody = await c.req.json().catch(() => ({}));
+  const validation = inviteEmployeeSchema.safeParse(rawBody);
+
+  if (!validation.success) {
+    const details = validation.error.issues.map((i) => ({
+      field: i.path.join('.'),
+      message: i.message,
+    }));
+    return apiError(c, 'VALIDATION_ERROR', 'Request validation failed.', 400, details);
+  }
+
+  const db = getDb(c);
+  const { tenantId } = getTenantScope(c);
+  const user = c.get('user')!;
+
+  const meta = {
+    ipAddress: c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || '127.0.0.1',
+    userAgent: c.req.header('user-agent'),
+  };
+
+  try {
+    const result = await InvitationsService.createInvitation(
+      db,
+      tenantId,
+      id,
+      user.id,
+      validation.data,
+      meta
+    );
+
+    // Return safe invitation details without exposing stored token hash or plain token in the HTTP API response
+    return apiSuccess(c, result.invitation, 201);
   } catch (err: any) {
     if (err.code && err.status) {
       return apiError(c, err.code, err.message, err.status);

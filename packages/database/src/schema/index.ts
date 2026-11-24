@@ -10,4 +10,5 @@ export * from './conversations';
 export * from './notifications';
 export * from './audit';
 export * from './hr';
+export * from './invitations';
 export * from './relations';
