@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand-50: 245 243 255;
+    --brand-100: 237 233 254;
+    --brand-500: 139 92 246;
+    --brand-600: 124 58 237;
+    --brand-700: 109 40 217;
+  }
+
+  body {
+    @apply bg-neutral-50 text-neutral-900 font-sans antialiased min-h-screen selection:bg-brand-100 selection:text-brand-900;
+  }
+}

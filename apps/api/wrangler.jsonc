@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sr-workspace-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-12-05",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sr-workspace-d1",
+      "database_id": "local-dev-d1-placeholder",
+      "migrations_dir": "../../packages/database/src/migrations"
+    }
+  ],
+  "vars": {
+    "APP_ENV": "development",
+    "APP_NAME": "SR WORKSPACE API",
+    "API_PREFIX": "/api/v1",
+    "APP_ORIGIN": "https://workspace.srcodelab.space",
+    "JWT_ACCESS_EXPIRATION_SECONDS": "900",
+    "REFRESH_TOKEN_EXPIRATION_DAYS": "7"
+  }
+}

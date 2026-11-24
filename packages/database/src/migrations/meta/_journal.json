@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1795430426736,
+      "tag": "0000_purple_christian_walker",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1795442914699,
+      "tag": "0001_absurd_tag",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1795446370914,
+      "tag": "0002_fantastic_logan",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1795455625876,
+      "tag": "0003_communication",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1795497933921,
+      "tag": "0004_hr_workforce",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1795498822191,
+      "tag": "0005_holiday_branch_uniqueness",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "sr-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SR WORKSPACE – Browser-based business collaboration platform",
+  "scripts": {
+    "dev:web": "pnpm --filter @sr-workspace/web dev",
+    "dev:api": "pnpm --filter @sr-workspace/api dev",
+    "build": "pnpm -r build",
+    "build:web": "pnpm --filter @sr-workspace/web build",
+    "typecheck": "pnpm -r typecheck",
+    "typecheck:web": "pnpm --filter @sr-workspace/web typecheck",
+    "test": "pnpm --filter @sr-workspace/api test",
+    "db:generate": "pnpm --filter @sr-workspace/database db:generate",
+    "create-admin": "node scripts/create-superadmin.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  },
+  "packageManager": "pnpm@12.16.1"
+}
